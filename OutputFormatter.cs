@@ -2,64 +2,60 @@ namespace EndfieldRecommendation
 {
     public static class OutputFormatter
     {
-        public static void WriteWeaponWithProbability(Weapon weapon, double probability)
+        /// <summary>
+        /// 输出完美掉落，按属性词条、名称排序，格式：【敏攻附】 宏愿、十二问
+        /// </summary>
+        public static void WritePerfectDropListGroupedByTraits(
+            List<(Weapon weapon, double probability)> weaponsWithProb,
+            string title,
+            Weapon? targetWeapon = null)
         {
-            Console.Write("【");
-            
-            // 设置颜色
-            if (weapon.IsRed)
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-            }
-            else if (weapon.IsGold)
-            {
-                Console.ForegroundColor = ConsoleColor.Yellow;
-            }
-            
-            Console.Write(weapon.Name);
-            Console.ResetColor();
-            
-            Console.Write($"（{probability:P1}）");
-            Console.Write("】");
-        }
-
-        public static void WriteWeaponList(List<(Weapon weapon, double probability)> weapons, string title, Weapon? targetWeapon = null)
-        {
-            if (weapons.Count == 0)
+            if (weaponsWithProb.Count == 0)
             {
                 Console.WriteLine($"{title}：无");
                 return;
             }
 
-            // 排序：目标武器在最前，然后按颜色（红先金后），最后按概率降序
-            var sortedWeapons = weapons.OrderBy(w => 
-            {
-                // 目标武器排在最前（返回0）
-                if (targetWeapon != null && w.weapon.Name == targetWeapon.Name)
-                    return 0;
-                // 其他武器返回1，排在后面
-                return 1;
-            })
-            .ThenBy(w => 
-            {
-                // 对于非目标武器，红色返回0（排在前面），金色返回1（排在后面）
-                // 目标武器已经排在最前，这里返回0保持位置
-                if (targetWeapon != null && w.weapon.Name == targetWeapon.Name)
-                    return 0;
-                return w.weapon.IsRed ? 0 : 1;
-            })
-            .ThenByDescending(w => w.probability)
-            .ToList();
+            // 按词条分组
+            var groups = weaponsWithProb
+                .GroupBy(x => $"{x.weapon.MainTrait}{x.weapon.SubTrait}{x.weapon.SkillTrait}")
+                .Select(g => new { Traits = g.Key, Weapons = g.ToList() })
+                .ToList();
 
-            Console.Write($"{title}：");
-            for (int i = 0; i < sortedWeapons.Count; i++)
+            // 排序：先按属性词条，再按名称（目标武器最前，红先金后，名称）
+            var sortedGroups = groups
+                .OrderBy(g => g.Traits)
+                .ThenBy(g => g.Weapons.Min(w => w.weapon.Name))
+                .ToList();
+
+            Console.WriteLine($"{title}：");
+            for (int i = 0; i < sortedGroups.Count; i++)
             {
-                if (i > 0)
-                    Console.Write("、");
-                
-                WriteWeaponWithProbability(sortedWeapons[i].weapon, sortedWeapons[i].probability);
+                var group = sortedGroups[i];
+                // 组内排序：目标武器最前，红先金后，名称
+                var sortedWeapons = group.Weapons.OrderBy(w =>
+                {
+                    if (targetWeapon != null && w.weapon.Name == targetWeapon.Name) return 0;
+                    return 1;
+                })
+                .ThenBy(w => w.weapon.IsRed ? 0 : 1)
+                .ThenBy(w => w.weapon.Name)
+                .ToList();
+
+                Console.Write($"【{group.Traits}】 ");
+                for (int j = 0; j < sortedWeapons.Count; j++)
+                {
+                    if (j > 0) Console.Write("、");
+                    var (weapon, _) = sortedWeapons[j];
+                    if (weapon.IsRed)
+                        Console.ForegroundColor = ConsoleColor.Red;
+                    else if (weapon.IsGold)
+                        Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.Write(weapon.Name);
+                    Console.ResetColor();
+                }
+                Console.WriteLine();
             }
-            Console.WriteLine();
         }
     }
 }

@@ -102,26 +102,12 @@ namespace EndfieldRecommendation
                     string traitType = rec.IsSubTrait ? "副词条" : "技能词条";
                     Console.WriteLine($"词条指定：主词条 [{mainTraitsStr}]，{traitType} [{rec.SpecifiedTrait}]");
 
-                    // 输出完美掉落武器列表
+                    // 输出完美掉落（按词条分组合并，保留概率）
                     var perfectWeapons = rec.WeaponProbabilities
                         .Where(kvp => kvp.Value.PerfectDropProbability > 0)
                         .Select(kvp => (kvp.Key, kvp.Value.PerfectDropProbability))
                         .ToList();
-                    OutputFormatter.WriteWeaponList(perfectWeapons, "完美掉落", targetWeapon);
-
-                    // 输出良好掉落武器列表
-                    var goodWeapons = rec.WeaponProbabilities
-                        .Where(kvp => kvp.Value.GoodDropProbability > 0)
-                        .Select(kvp => (kvp.Key, kvp.Value.GoodDropProbability))
-                        .ToList();
-                    OutputFormatter.WriteWeaponList(goodWeapons, "良好掉落", targetWeapon);
-
-                    // 输出一般掉落武器列表
-                    var normalWeapons = rec.WeaponProbabilities
-                        .Where(kvp => kvp.Value.NormalDropProbability > 0)
-                        .Select(kvp => (kvp.Key, kvp.Value.NormalDropProbability))
-                        .ToList();
-                    OutputFormatter.WriteWeaponList(normalWeapons, "一般掉落", targetWeapon);
+                    OutputFormatter.WritePerfectDropListGroupedByTraits(perfectWeapons, "完美掉落", targetWeapon);
 
                     Console.WriteLine();
                 }
