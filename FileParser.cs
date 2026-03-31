@@ -14,10 +14,15 @@ namespace EndfieldRecommendation
             var lines = File.ReadAllLines(filePath);
             foreach (var line in lines)
             {
-                if (string.IsNullOrWhiteSpace(line))
+                var trimmedLine = line.Trim();
+                if (string.IsNullOrWhiteSpace(trimmedLine))
                     continue;
 
-                var parts = line.Split('\t');
+                // 以 # 开头：已毕业，不参与期望与概率计算
+                if (trimmedLine.StartsWith('#'))
+                    continue;
+
+                var parts = trimmedLine.Split('\t');
                 if (parts.Length < 3)
                     continue;
 
