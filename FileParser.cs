@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace EndfieldRecommendation
 {
     public static class FileParser
@@ -18,9 +20,9 @@ namespace EndfieldRecommendation
                 if (string.IsNullOrWhiteSpace(trimmedLine))
                     continue;
 
-                // 以 # 开头：已毕业，不参与期望与概率计算
-                if (trimmedLine.StartsWith('#'))
-                    continue;
+                var completed = trimmedLine.StartsWith('#');
+                if (completed)
+                    trimmedLine = trimmedLine.TrimStart('#').TrimStart();
 
                 var parts = trimmedLine.Split('\t');
                 if (parts.Length < 3)
@@ -30,6 +32,7 @@ namespace EndfieldRecommendation
                 {
                     Name = parts[0].Trim(),
                     Color = parts[1].Trim(),
+                    IsCompletedPerfectFarm = completed,
                 };
 
                 var traits = parts[2].Trim();
@@ -61,27 +64,36 @@ namespace EndfieldRecommendation
                 if (string.IsNullOrWhiteSpace(line))
                     continue;
 
-                var parts = line.Split('\t');
-                if (parts.Length < 3)
+                // 支持 Tab 或多空格分隔；最后一列为整数权重
+                var tokens = Regex.Split(line.Trim(), @"\s+")
+                    .Where(t => t.Length > 0)
+                    .ToList();
+
+                if (tokens.Count < 3)
                     continue;
 
-                var dungeon = new Dungeon
-                {
-                    Name = parts[0].Trim(),
-                };
+                var dungeon = new Dungeon();
 
-                // 解析可掉落的副词条
-                var subTraitsStr = parts[1].Trim();
-                foreach (var ch in subTraitsStr)
+                if (tokens.Count >= 4 && int.TryParse(tokens[^1], out var weight))
                 {
-                    dungeon.AvailableSubTraits.Add(ch);
+                    dungeon.Name = string.Join(" ", tokens.Take(tokens.Count - 3));
+                    dungeon.Weight = weight;
+                    var subTraitsStr = tokens[^3];
+                    var skillTraitsStr = tokens[^2];
+                    foreach (var ch in subTraitsStr)
+                        dungeon.AvailableSubTraits.Add(ch);
+                    foreach (var ch in skillTraitsStr)
+                        dungeon.AvailableSkillTraits.Add(ch);
                 }
-
-                // 解析可掉落的技能词条
-                var skillTraitsStr = parts[2].Trim();
-                foreach (var ch in skillTraitsStr)
+                else
                 {
-                    dungeon.AvailableSkillTraits.Add(ch);
+                    // 兼容无权重列的旧格式（视为权重 0）
+                    dungeon.Name = tokens[0];
+                    foreach (var ch in tokens[1])
+                        dungeon.AvailableSubTraits.Add(ch);
+                    foreach (var ch in tokens[2])
+                        dungeon.AvailableSkillTraits.Add(ch);
+                    dungeon.Weight = 0;
                 }
 
                 dungeons.Add(dungeon);

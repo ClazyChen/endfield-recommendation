@@ -7,8 +7,10 @@ namespace EndfieldRecommendation
         public char SpecifiedTrait { get; set; } // 指定的副词条或技能词条
         public bool IsSubTrait { get; set; } // true=副词条, false=技能词条
         public Dictionary<Weapon, DropResult> WeaponProbabilities { get; set; } = new();
-        public double PerfectExpectation { get; set; }
-        public double GoodExpectation { get; set; }
-        public double NormalExpectation { get; set; }
+        public int DungeonWeight { get; set; }
+        /// <summary>未完成完美掉落武器的 P(完美) 之和。</summary>
+        public double IncompletePerfectExpectation { get; set; }
+        /// <summary>已完成完美掉落武器的 P(完美) 之和。</summary>
+        public double CompletedPerfectExpectation { get; set; }
     }
 }

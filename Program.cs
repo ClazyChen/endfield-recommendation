@@ -75,10 +75,11 @@ namespace EndfieldRecommendation
                     }
                 }
 
-                // 排序：按完美掉落期望降序 → 良好掉落期望降序 → 一般掉落期望降序
-                recommendations = recommendations.OrderByDescending(r => r.PerfectExpectation)
-                    .ThenByDescending(r => r.GoodExpectation)
-                    .ThenByDescending(r => r.NormalExpectation)
+                // 排序：未完成完美期望降序 → 副本权重升序 → 已完成完美期望降序
+                recommendations = recommendations
+                    .OrderByDescending(r => r.IncompletePerfectExpectation)
+                    .ThenBy(r => r.DungeonWeight)
+                    .ThenByDescending(r => r.CompletedPerfectExpectation)
                     .ToList();
 
                 // 输出结果
@@ -103,11 +104,16 @@ namespace EndfieldRecommendation
                     Console.WriteLine($"词条指定：主词条 [{mainTraitsStr}]，{traitType} [{rec.SpecifiedTrait}]");
 
                     // 输出完美掉落（按词条分组合并，保留概率）
-                    var perfectWeapons = rec.WeaponProbabilities
-                        .Where(kvp => kvp.Value.PerfectDropProbability > 0)
+                    var perfectIncomplete = rec.WeaponProbabilities
+                        .Where(kvp => !kvp.Key.IsCompletedPerfectFarm && kvp.Value.PerfectDropProbability > 0)
                         .Select(kvp => (kvp.Key, kvp.Value.PerfectDropProbability))
                         .ToList();
-                    OutputFormatter.WritePerfectDropListGroupedByTraits(perfectWeapons, "完美掉落", targetWeapon);
+                    var perfectCompleted = rec.WeaponProbabilities
+                        .Where(kvp => kvp.Key.IsCompletedPerfectFarm && kvp.Value.PerfectDropProbability > 0)
+                        .Select(kvp => (kvp.Key, kvp.Value.PerfectDropProbability))
+                        .ToList();
+                    OutputFormatter.WritePerfectDropListGroupedByTraits(perfectIncomplete, "未完成的完美掉落", targetWeapon);
+                    OutputFormatter.WritePerfectDropListGroupedByTraits(perfectCompleted, "已完成的完美掉落", targetWeapon);
 
                     Console.WriteLine();
                 }
@@ -129,6 +135,7 @@ namespace EndfieldRecommendation
             var recommendation = new Recommendation
             {
                 DungeonName = dungeon.Name,
+                DungeonWeight = dungeon.Weight,
                 MainTraits = new List<char>(mainTraits),
                 SpecifiedTrait = specifiedTrait,
                 IsSubTrait = isSubTrait,
@@ -155,13 +162,12 @@ namespace EndfieldRecommendation
                 return null; // 不符合条件，过滤掉
             }
 
-            // 计算期望值
-            recommendation.PerfectExpectation = recommendation.WeaponProbabilities
-                .Values.Sum(r => r.PerfectDropProbability);
-            recommendation.GoodExpectation = recommendation.WeaponProbabilities
-                .Values.Sum(r => r.GoodDropProbability);
-            recommendation.NormalExpectation = recommendation.WeaponProbabilities
-                .Values.Sum(r => r.NormalDropProbability);
+            recommendation.IncompletePerfectExpectation = recommendation.WeaponProbabilities
+                .Where(kvp => !kvp.Key.IsCompletedPerfectFarm)
+                .Sum(kvp => kvp.Value.PerfectDropProbability);
+            recommendation.CompletedPerfectExpectation = recommendation.WeaponProbabilities
+                .Where(kvp => kvp.Key.IsCompletedPerfectFarm)
+                .Sum(kvp => kvp.Value.PerfectDropProbability);
 
             return recommendation;
         }
